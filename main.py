@@ -12,7 +12,9 @@ class App:
 
         # Set window caption and create the game window
         pg.display.set_caption('Tetris')
-        self.screen = pg.display.set_mode(WIN_RES)
+
+        #MoArouni Change : Modify the window creation to allow resizing 
+        self.screen = pg.display.set_mode(WIN_RES, pg.RESIZABLE)
 
         # Create Pygame clock for controlling frame rate
         self.clock = pg.time.Clock()
@@ -26,6 +28,8 @@ class App:
         # Initialize Tetris game and text display
         self.tetris = Tetris(self)
         self.text = Text(self)
+
+        self.paused = False
 
     # Function to load images from the sprite directory and scale them to TILE_SIZE
     def load_images(self):
@@ -45,15 +49,21 @@ class App:
 
     # Function to update the game state
     def update(self):
-        self.tetris.update()
+        if not self.paused and not self.text.menu_toggled: 
+            self.tetris.update()
         self.clock.tick(FPS)
+        
+
 
     # Function to draw the game elements on the screen
     def draw(self):
         # Fill the screen with background color
         self.screen.fill(color=BG_COLOR)
 
-        # Fill the game field with the field color
+        #scale the game field dynamically based on FIELD_RES and TILE_SIZE
+        field_rect = pg.Rect(0, 0, FIELD_RES[0], FIELD_RES[1])
+        self.screen.fill(color=FIELD_COLOR, rect=field_rect)
+
         self.screen.fill(color=FIELD_COLOR, rect=(0, 0, *FIELD_RES))
 
         # Draw Tetris game and text elements
@@ -62,6 +72,13 @@ class App:
 
         # Update the display
         pg.display.flip()
+    
+
+    def update_animation_interval(self, interval):
+        ANIM_TIME_INTERVAL = interval  # Update the main interval
+        pg.time.set_timer(self.user_event, ANIM_TIME_INTERVAL)  # Update the timer
+        print(f"Animation time interval updated to {interval} ms")
+
 
     # Function to handle Pygame events
     def check_events(self):
@@ -69,20 +86,58 @@ class App:
         self.fast_anim_trigger = False
 
         for event in pg.event.get():
-            # Quit the game if the user closes the window or presses ESC
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
                 pg.quit()
                 sys.exit()
-
-            # Handle key presses for Tetris controls
             elif event.type == pg.KEYDOWN:
-                self.tetris.control(pressed_key=event.key)
-
-            # Set animation triggers based on timer events
+                if event.key == pg.K_SPACE and self.text.menu_toggled == False:
+                    self.text.paused = not self.text.paused
+                    self.paused = not self.paused
+                    print("Game Paused :")
+                else:
+                    self.tetris.control(pressed_key=event.key)
+            
             elif event.type == self.user_event:
                 self.anim_trigger = True
             elif event.type == self.fast_user_event:
                 self.fast_anim_trigger = True
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Left mouse button
+                    mouse_pos = pg.mouse.get_pos()
+                    if self.text.is_button_clicked(mouse_pos, self.text.menu_position, self.text.menu_size):  # Only log if the menu is clicked
+                        self.text.menu_toggled = not self.text.menu_toggled
+                    if self.text.menu_toggled : 
+                        self.text.handle_button_clicks(mouse_pos)
+                        if self.text.is_button_clicked(mouse_pos, self.text.easy_position, self.text.easy_size):
+                            print("Difficulty set to Easy")
+                            self.update_animation_interval(150)
+                            self.text.difficulty_toggled = False
+                            self.text.menu_toggled = True
+                        elif self.text.is_button_clicked(mouse_pos, self.text.medium_position, self.text.medium_size):
+                            print("Difficulty set to Medium")
+                            self.update_animation_interval(140)
+                            self.text.difficulty_toggled = False
+                            self.text.menu_toggled = True
+                        elif self.text.is_button_clicked(mouse_pos, self.text.hard_position, self.text.hard_size):
+                            print("Difficulty set to Hard")
+                            self.update_animation_interval(130)
+                            self.text.difficulty_toggled = False
+                            self.text.menu_toggled = True
+                        elif self.text.is_button_clicked(mouse_pos, self.text.insane_position, self.text.insane_size):
+                            print("Difficulty set to Insane")
+                            self.update_animation_interval(115)
+                            self.text.difficulty_toggled = False
+                            self.text.menu_toggled = True
+                        elif self.text.is_button_clicked(mouse_pos, self.text.impossible_position, self.text.impossible_size):
+                            print("Difficulty set to Impossible")
+                            self.update_animation_interval(100)
+                            self.text.difficulty_toggled = False
+                            self.text.menu_toggled = True
+
+
+
+
+
 
     # Function to run the game loop
     def run(self):
@@ -102,3 +157,10 @@ if __name__ == '__main__':
     # Create an instance of the App class and run the game
     app = App()
     app.run()
+
+
+# Modified the main application to include a dynamic and resizable game window.
+# Added menu toggle functionality with options for difficulty selection, restart, and exit.
+# Integrated a pause and resume feature to control game flow.
+# Enhanced the event handling system to handle button interactions and difficulty changes.
+# Streamlined the game loop to reflect updates in the sidebar and menu states.
